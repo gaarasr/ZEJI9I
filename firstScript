@@ -1,0 +1,210 @@
+using UnityEngine;
+using System.Collections;
+using UnityEngine.AI;
+
+public class UnitComponent : MonoBehaviour
+{
+    [Header("options")]
+    [SerializeField]
+    public string _Name = "unit";
+    public UnitType _type; // выбрать тип юнита
+    private UnitSelect manager;
+    public Projector proj;
+    public NavMeshAgent _agent;
+    
+    [Header("Target Translate")]
+    public Vector3 targetVec;
+
+
+    [Header("Fly Unit Options")]
+    public float _flyHeight = 10.0f;
+    public float _speed = 10;
+    public GameObject target;
+    private bool Flyings = false;
+
+    public Transform firePoint;
+
+    public int damageOverTime = 20;
+    public float slowAmount = .5f;
+
+    public LineRenderer lineRenderer; 
+
+    [Header("Tanks Options")]
+    public GameObject _head;
+    public GameObject _tankHeadFirePoint;
+
+    private GlobalDataBase _GDB;
+
+    public enum typeAtack
+    {
+        fly_fly,
+        fly_earth,
+        earth_earth,
+        earth_fly,
+        transport
+    }
+
+    [Header("All unit options")]
+    public float maxHealth;
+    public float curHealth;
+    public typeAtack _tpAtack;
+    // бул выделенного объекта
+    private bool selectUnt;
+
+    void OnMouseEnter()
+    {
+        _GDB._panelInform.SetActive(true);
+        _GDB._structName.text = "Name : " + _Name;
+        _GDB._structHeals.text = "Heals : " + curHealth + "/" + maxHealth;
+    }
+
+    void OnMouseExit()
+    {
+        _GDB._panelInform.SetActive(false);
+    }
+
+
+
+    void Start()
+    {
+        GlobalDataBase.unit.Add(gameObject);
+        curHealth = maxHealth;
+        targetVec = transform.position;
+        _GDB = GameObject.FindGameObjectWithTag("Manager").GetComponent<GlobalDataBase>();
+    }
+
+    public void Select()
+    {
+        proj.enabled = true;
+    }
+    public void DeSelect()
+    {
+        proj.enabled = false;
+    }
+
+    public virtual void TakeDamage(float _damage)
+    {
+        curHealth -= _damage;
+    }
+
+    void Update()
+    {
+
+       
+        if(_type == UnitType.Unit_Soldier) // если выбран солдат
+        {
+            MovementSoldier();
+        }
+
+        if (_type == UnitType.Unit_Tank) // если выбран танк
+        {
+            MovementTank();
+        }
+
+        if (_type == UnitType.Unit_Fly)
+        {
+            MovementFly();
+            if (Input.GetMouseButtonDown(1))
+            {
+                //стрельба лазером!!
+            }
+
+        }
+
+        if(_type == UnitType.Unit_Car)
+        {
+            MovementCar();
+        }
+
+        if(curHealth <= 0)
+        {
+            GlobalDataBase.unit.Remove(gameObject);
+            Destroy(gameObject);
+        }
+    }
+
+    void MovementTank()
+    {
+        Debug.DrawRay(_tankHeadFirePoint.transform.position, _head.transform.forward * 500, Color.red);
+
+        if (Vector3.Distance(transform.position, targetVec) > 1)
+        {           
+            _agent.SetDestination(targetVec);
+        }
+        else
+        {
+            _agent.Stop();
+            _agent.ResetPath();
+        }
+    }
+
+    void MovementSoldier()
+    {
+        if (Vector3.Distance(transform.position, targetVec) > 1)
+        {
+            _agent.SetDestination(targetVec);
+        }
+        else
+        {
+            _agent.Stop();
+            _agent.ResetPath();
+        }
+    }
+
+    void MovementFly()
+    {
+        //передвижение объекта
+        if (Vector3.Distance(transform.position, targetVec) > 1)
+        {
+            //возвышение
+            if (Vector3.Distance(transform.position, new Vector3(transform.position.x, _flyHeight, transform.position.z)) > 2)
+            {
+                transform.position = Vector3.Lerp(transform.position, new Vector3(transform.position.x, _flyHeight, transform.position.z), Time.deltaTime * 1.0f);
+
+            } else
+            {
+                transform.position = Vector3.Lerp(transform.position, new Vector3(targetVec.x, _flyHeight, targetVec.z), Time.deltaTime * _speed);
+                transform.LookAt(new Vector3(targetVec.x, _flyHeight, targetVec.z));
+                //transform.rotation = Quaternion.Lerp(transform.rotation, new Vector3(targetVec.x, _flyHeight, targetVec.z), Time.deltaTime * 0.5f);
+            }
+        }
+        
+    }
+
+    void MovementCar()
+    {
+        
+
+        if (Vector3.Distance(transform.position, targetVec) > 1)
+        {
+            //rotate to path
+
+            _agent.SetDestination(targetVec);
+        }
+        else
+        {
+            _agent.Stop();
+            _agent.ResetPath();
+        }
+
+    }
+
+    void Laser()
+    {
+        
+        target.GetComponent<UnitComponent>().TakeDamage(damageOverTime * Time.deltaTime);
+
+
+        if (!lineRenderer.enabled)
+        {
+            lineRenderer.enabled = true;
+           
+        }
+
+
+        lineRenderer.SetPosition(0, firePoint.position);
+        lineRenderer.SetPosition(1, target.transform.position);
+
+    }
+
+}
